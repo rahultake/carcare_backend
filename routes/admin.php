@@ -1,0 +1,135 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\BlogController;
+use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductImportController;
+use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\ProductReviewController;
+use App\Http\Controllers\Admin\AnnouncementBarController;
+use App\Http\Controllers\Admin\TrainingCourseController;
+use App\Http\Controllers\Admin\CourseModuleController;
+use App\Http\Controllers\Admin\ModuleItemController;
+use App\Http\Controllers\Admin\TrainingBenefitController;
+use App\Http\Controllers\Admin\BenefitItemController;
+use App\Http\Controllers\Admin\AcademyHighlightController;
+use App\Http\Controllers\Admin\HighlightItemController;
+use App\Http\Controllers\Admin\SpecializationProgramController;
+use App\Http\Controllers\Admin\SpecializationItemController;
+use App\Http\Controllers\Admin\TrainingInquiryController;
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    // Guest routes (not authenticated)
+    Route::middleware('guest:admin')->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('admin.login');
+        });
+        Route::get('login', [AuthController::class, 'showLoginForm'])->name('login');
+        Route::post('login', [AuthController::class, 'login']);
+    });
+
+    // Authenticated routes
+    Route::middleware(['auth.admin'])->group(function () {
+        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+        Route::resource('categories', CategoryController::class);
+        Route::post('categories/sort-order', [CategoryController::class, 'updateSortOrder'])->name('categories.sort-order');
+        
+        // Product Management
+        Route::resource('products', ProductController::class);
+        Route::post('products/bulk-action', [ProductController::class, 'bulkAction'])->name('products.bulk-action');
+        Route::delete('products/{product}/images/{image}', [ProductController::class, 'deleteImage'])->name('products.images.delete');
+        Route::post('products/{product}/images/{image}/primary', [ProductController::class, 'setPrimaryImage'])->name('products.images.primary');
+        Route::get('products-export', [ProductController::class, 'export'])->name('products.export');
+        Route::get('products-low-stock', [ProductController::class, 'lowStock'])->name('products.low-stock');
+
+        Route::resource('blogs', BlogController::class);
+
+        Route::resource('brands', BrandController::class);
+
+        Route::get(
+            'announcement-bar',
+            [AnnouncementBarController::class, 'index']
+        )->name('announcement-bar.index');
+
+        Route::post(
+            'announcement-bar',
+            [AnnouncementBarController::class, 'update']
+        )->name('announcement-bar.update');
+        
+        // Product Import/Export
+        Route::get('products-import', [ProductImportController::class, 'showImportForm'])->name('products.import');
+        Route::post('products-import', [ProductImportController::class, 'import'])->name('products.import.process');
+        Route::get('products-import-template', [ProductImportController::class, 'downloadTemplate'])->name('products.import.template');
+
+        Route::resource('training-courses', TrainingCourseController::class);
+
+        Route::resource('course-modules', CourseModuleController::class);
+
+        Route::resource('module-items', ModuleItemController::class);
+
+        Route::resource('training-benefits', TrainingBenefitController::class);
+
+        Route::resource('benefit-items', BenefitItemController::class);
+
+        Route::resource('academy-highlights', AcademyHighlightController::class);
+
+        Route::resource('highlight-items', HighlightItemController::class);
+
+        Route::resource('specialization-programs', SpecializationProgramController::class);
+
+        Route::resource('specialization-items', SpecializationItemController::class);
+
+        Route::get(
+            'training-inquiries',
+            [TrainingInquiryController::class,'index']
+        )->name('training-inquiries.index');
+
+        Route::delete(
+            'training-inquiries/{id}',
+            [TrainingInquiryController::class,'destroy']
+        )->name('training-inquiries.destroy');
+
+        // Coupon Management
+        Route::resource('coupons', CouponController::class);
+        Route::post('coupons/bulk-action', [CouponController::class, 'bulkAction'])->name('coupons.bulk-action');
+        Route::post('coupons/{coupon}/duplicate', [CouponController::class, 'duplicate'])->name('coupons.duplicate');
+        Route::get('coupons-export', [CouponController::class, 'export'])->name('coupons.export');
+        Route::get('generate-coupon-code', [CouponController::class, 'generateCode'])->name('coupons.generate-code');
+        Route::post('validate-coupon-code', [CouponController::class, 'validateCode'])->name('coupons.validate-code');
+
+
+        Route::get('banners', [BannerController::class, 'index'])->name('banners.index');
+        Route::post('banners', [BannerController::class, 'store'])->name('banners.store');
+        Route::delete('banners/{banner}', [BannerController::class, 'destroy'])->name('banners.destroy');
+
+        Route::get('reviews', [ProductReviewController::class, 'index'])->name('reviews.index');
+        Route::post('reviews', [ProductReviewController::class, 'store'])->name('reviews.store');
+        Route::post('reviews/{id}/toggle-status', [ProductReviewController::class, 'toggleStatus'])->name('reviews.toggle-status');
+        Route::delete('reviews/{id}', [ProductReviewController::class, 'destroy'])->name('reviews.destroy');
+   
+        Route::get('orders', [OrderController::class,'index'])->name('orders.index');
+        Route::get('orders/{id}', [OrderController::class,'show'])->name('orders.show');
+
+        Route::get('customers', [CustomerController::class,'index'])->name('customers.index');
+        Route::get('customers/{id}', [CustomerController::class,'show'])->name('customers.show');
+        Route::delete('customers/{id}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+
+        Route::get('reports', [ReportController::class,'index'])->name('reports.index');
+
+        Route::get('settings', [SettingController::class,'index'])->name('settings.index');
+        Route::post('settings', [SettingController::class,'update'])->name('settings.update');
+
+        Route::resource('admin-users', AdminUserController::class);
+    });
+});

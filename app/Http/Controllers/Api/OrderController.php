@@ -148,9 +148,14 @@ class OrderController extends Controller
         ];
 
         if ($detailed) {
-            $data['shipping_address'] = json_decode($order->shipping_address, true);
-            $data['billing_address'] = json_decode($order->billing_address, true);
-            $data['shipping_status'] = $order->shipping_status;
+            $shippingAddr = json_decode($order->shipping_address, true);
+            $billingAddr  = json_decode($order->billing_address, true);
+
+            $data['shipping_address']  = $shippingAddr;
+            $data['billing_address']   = $billingAddr;
+            $data['company_name']      = $shippingAddr['company_name'] ?? null;
+            $data['gstin_number']      = $shippingAddr['gstin_number'] ?? null;
+            $data['shipping_status']   = $order->shipping_status;
             $data['tracking_number'] = $order->tracking_number;
             $data['shipping_provider'] = $order->shipping_provider;
             $data['coupon_code'] = $order->coupon_code;

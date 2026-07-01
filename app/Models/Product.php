@@ -27,6 +27,7 @@ class Product extends Model
         'cgst',
         'sgst',
         'igst',
+        'merchant_state',
         'quantity',
         'min_quantity',
         'track_inventory',

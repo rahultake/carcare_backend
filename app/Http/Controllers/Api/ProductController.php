@@ -204,6 +204,7 @@ class ProductController extends Controller
             'cgst' => (float) ($product->cgst ?? 0),
             'sgst' => (float) ($product->sgst ?? 0),
             'igst' => (float) ($product->igst ?? 0),
+            'merchant_state' => $product->merchant_state ?? null,
             'is_featured' => $product->is_featured,
             'is_digital' => $product->is_digital,
             'stock_status' => $product->stock_status,

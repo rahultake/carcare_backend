@@ -212,6 +212,25 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Merchant State (Place of Supply) -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Merchant State (Place of Supply)</label>
+                                <input type="text" class="form-control @error('merchant_state') is-invalid @enderror"
+                                       name="merchant_state" value="{{ old('merchant_state') }}"
+                                       placeholder="e.g. Maharashtra, Gujarat">
+                                <small class="text-muted">
+                                    State from where this product is supplied/shipped. Used to determine CGST+SGST or IGST.
+                                    Leave blank to use the global shop state (<code>{{ env('SHOP_STATE', 'Maharashtra') }}</code>).
+                                </small>
+                                @error('merchant_state')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

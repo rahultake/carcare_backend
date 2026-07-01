@@ -250,8 +250,7 @@ class CartController extends Controller
         // Calculate GST Breakdown
         $shippingAddress = $request->shipping_address;
         $shippingState = $shippingAddress['state'] ?? '';
-        $shopState = env('SHOP_STATE', 'Maharashtra');
-        $isSameState = strcasecmp(trim($shippingState), trim($shopState)) === 0;
+        // Note: $isSameState is now determined per-item using each product's merchant_state
 
         $totalCgstAmount = 0.00;
         $totalSgstAmount = 0.00;
@@ -269,6 +268,12 @@ class CartController extends Controller
             }
             
             $netItemAmount = $itemSubtotal - $itemDiscount;
+            
+            // Per-product merchant state; fallback to global SHOP_STATE
+            $productMerchantState = !empty($item->product->merchant_state)
+                ? $item->product->merchant_state
+                : env('SHOP_STATE', 'Maharashtra');
+            $isSameState = strcasecmp(trim($shippingState), trim($productMerchantState)) === 0;
             
             // Product GST rates
             $cgstPct = (float) ($item->product->cgst ?? 0);

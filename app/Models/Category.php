@@ -18,6 +18,7 @@ class Category extends Model
         'description',
         'image',
         'icon',
+        'hsn_code',
         'parent_id',
         'sort_order',
         'status',

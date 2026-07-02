@@ -81,6 +81,12 @@ Route::middleware('auth:sanctum')->prefix('payment')->group(function () {
 // Razorpay Webhook (No auth - verified by signature)
 Route::post('payment/webhook', [PaymentController::class, 'handleWebhook']);
 
+// Shiprocket Webhook (No auth - token verification handled in controller)
+Route::post('shiprocket/webhook', [App\Http\Controllers\Api\ShiprocketWebhookController::class, 'handleWebhook']);
+
+// ParcelX Webhook (No auth - status updates)
+Route::post('parcelx/webhook', [App\Http\Controllers\Api\ParcelXWebhookController::class, 'handle']);
+
 // Order APIs (Protected)
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
 
@@ -89,6 +95,7 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     Route::get('/', [OrderController::class, 'index']);
     Route::get('/{id}', [OrderController::class, 'show']);
     Route::post('/{id}/cancel', [OrderController::class, 'cancel']);
+    Route::post('/{id}/return', [OrderController::class, 'requestReturn']);
 });
 
 // Wishlist APIs (Protected)

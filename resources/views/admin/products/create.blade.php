@@ -524,5 +524,52 @@ document.querySelector('input[name="name"]').addEventListener('input', function(
         slugInput.value = slug;
     }
 });
+
+// Pricing & Discount Auto-Calculation
+(function() {
+    const priceInput = document.querySelector('input[name="price"]');
+    const comparePriceInput = document.querySelector('input[name="compare_price"]');
+    const discountInput = document.querySelector('input[name="discount_percentage"]');
+
+    if (!priceInput || !comparePriceInput || !discountInput) return;
+
+    let isCalculating = false;
+
+    function handlePriceOrCompareChange() {
+        if (isCalculating) return;
+        isCalculating = true;
+        
+        const price = parseFloat(priceInput.value) || 0;
+        const comparePrice = parseFloat(comparePriceInput.value) || 0;
+
+        if (comparePrice > 0 && comparePrice > price) {
+            const discount = ((comparePrice - price) / comparePrice) * 100;
+            discountInput.value = Math.max(0, Math.min(100, discount)).toFixed(2);
+        } else {
+            discountInput.value = '0.00';
+        }
+        
+        isCalculating = false;
+    }
+
+    function handleDiscountChange() {
+        if (isCalculating) return;
+        isCalculating = true;
+
+        const comparePrice = parseFloat(comparePriceInput.value) || 0;
+        const discount = parseFloat(discountInput.value) || 0;
+
+        if (comparePrice > 0) {
+            const price = comparePrice * (1 - discount / 100);
+            priceInput.value = Math.max(0, price).toFixed(2);
+        }
+        
+        isCalculating = false;
+    }
+
+    priceInput.addEventListener('input', handlePriceOrCompareChange);
+    comparePriceInput.addEventListener('input', handlePriceOrCompareChange);
+    discountInput.addEventListener('input', handleDiscountChange);
+})();
 </script>
 @endpush

@@ -108,6 +108,15 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">HSN Code</label>
+                        <input type="text" class="form-control @error('hsn_code') is-invalid @enderror" 
+                               name="hsn_code" value="{{ old('hsn_code', $category->hsn_code) }}" placeholder="e.g. 8708">
+                        @error('hsn_code')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Category Image</label>
                         <input type="file" class="form-control @error('image') is-invalid @enderror" 
                                name="image" accept="image/*">

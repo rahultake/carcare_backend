@@ -11,9 +11,11 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImportController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\ReturnController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\ShippingSettingController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\ProductReviewController;
 use App\Http\Controllers\Admin\AnnouncementBarController;
@@ -120,6 +122,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
    
         Route::get('orders', [OrderController::class,'index'])->name('orders.index');
         Route::get('orders/{id}', [OrderController::class,'show'])->name('orders.show');
+        Route::post('orders/{id}/update-status', [OrderController::class, 'updateStatus'])->name('orders.update-status');
+        Route::post('orders/{id}/sync-carrier', [OrderController::class, 'syncCarrierStatus'])->name('orders.sync-carrier');
+
+        // Returns / RMA Management
+        Route::get('returns', [ReturnController::class, 'index'])->name('returns.index');
+        Route::get('returns/{id}', [ReturnController::class, 'show'])->name('returns.show');
+        Route::post('returns/{id}/approve', [ReturnController::class, 'approve'])->name('returns.approve');
+        Route::post('returns/{id}/reject', [ReturnController::class, 'reject'])->name('returns.reject');
+        Route::post('returns/{id}/receive', [ReturnController::class, 'receive'])->name('returns.receive');
 
         Route::get('customers', [CustomerController::class,'index'])->name('customers.index');
         Route::get('customers/{id}', [CustomerController::class,'show'])->name('customers.show');
@@ -129,6 +140,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('settings', [SettingController::class,'index'])->name('settings.index');
         Route::post('settings', [SettingController::class,'update'])->name('settings.update');
+
+        Route::get('shipping-settings', [ShippingSettingController::class, 'index'])->name('shipping-settings.index');
+        Route::post('shipping-settings', [ShippingSettingController::class, 'update'])->name('shipping-settings.update');
+        Route::post('shipping-settings/create-warehouse', [ShippingSettingController::class, 'createWarehouse'])->name('shipping-settings.create-warehouse');
+        Route::post('shipping-settings/delete-warehouse/{id}', [ShippingSettingController::class, 'deleteWarehouse'])->name('shipping-settings.delete-warehouse');
 
         Route::resource('admin-users', AdminUserController::class);
     });

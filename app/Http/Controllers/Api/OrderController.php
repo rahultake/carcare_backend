@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class OrderController extends Controller
 {
@@ -61,7 +63,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Cancel order (only if payment is pending)
+     * Cancel order (user-side: works if unpaid, OR if paid but not yet shipped)
      */
     public function cancel($id, Request $request)
     {
@@ -78,13 +80,6 @@ class OrderController extends Controller
             ], 404);
         }
 
-        if ($order->payment_status === 'completed') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Cannot cancel paid order. Please contact support for refund.'
-            ], 400);
-        }
-
         if ($order->status === 'cancelled') {
             return response()->json([
                 'status' => 'error',
@@ -92,14 +87,174 @@ class OrderController extends Controller
             ], 400);
         }
 
+        // Paid orders can only be cancelled if they have not been shipped out yet
+        if ($order->payment_status === 'completed' && in_array($order->shipping_status, ['shipped', 'delivered', 'rto'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot cancel order after it has been shipped. Please request a return after delivery.'
+            ], 400);
+        }
+
+        // If the order has already been booked with carrier, cancel it on carrier side
+        if ($order->awb_code) {
+            $shipmentData = json_decode($order->shipment_data, true) ?: [];
+            $provider = $shipmentData['provider'] ?? 'shiprocket';
+
+            if ($provider === 'parcelx') {
+                try {
+                    $parcelx = new \App\Services\ParcelXService();
+                    $parcelx->cancelOrder($order->awb_code);
+                } catch (\Exception $e) {
+                    Log::error("Failed to cancel ParcelX order: " . $e->getMessage());
+                }
+            } else {
+                try {
+                    $shiprocket = new \App\Services\ShiprocketService();
+                    if ($order->shiprocket_order_id) {
+                        $shiprocket->cancelOrder($order->shiprocket_order_id);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Failed to cancel Shiprocket order: " . $e->getMessage());
+                }
+            }
+        }
+
+        // Restock inventory
+        foreach ($order->items as $item) {
+            if ($item->product && $item->product->track_inventory) {
+                $item->product->increment('quantity', $item->quantity);
+            }
+        }
+
+        // Handle payment gateway refund if paid via Razorpay
+        $refunded = false;
+        if ($order->payment_status === 'completed' && $order->total_amount > 0) {
+            $refundResult = \App\Http\Controllers\Api\PaymentController::initiateRazorpayRefund(
+                $order,
+                $order->total_amount,
+                'Customer cancellation via app'
+            );
+            if ($refundResult && $refundResult['status'] === 'success') {
+                $refunded = true;
+            }
+        }
+
+        // Update database statuses
         $order->update([
             'status' => 'cancelled',
-            'payment_status' => 'failed',
+            'payment_status' => $refunded ? 'refunded' : ($order->payment_status === 'completed' ? 'refunded' : 'failed'),
+            'shipping_status' => 'cancelled',
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Order cancelled successfully'
+            'message' => $refunded 
+                ? 'Order cancelled and refund initiated successfully.' 
+                : 'Order cancelled successfully.'
+        ]);
+    }
+
+    /**
+     * Request return / RMA for delivered items
+     */
+    public function requestReturn($id, Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|max:255',
+            'items' => 'required|array',
+            'items.*.order_item_id' => 'required|exists:order_items,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+        $order = Order::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Order not found'
+            ], 404);
+        }
+
+        // Can only return delivered orders
+        if ($order->shipping_status !== 'delivered' && $order->status !== 'completed') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Can only return delivered orders.'
+            ], 400);
+        }
+
+        // Return window validation (e.g. 7 days from delivery date)
+        $deliveryDate = $order->delivered_at ?: $order->updated_at;
+        if (now()->diffInDays($deliveryDate) > 7) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Return window has expired. Returns are only allowed within 7 days of delivery.'
+            ], 400);
+        }
+
+        // Calculate refund amount and validate return items exist in this order
+        $refundAmount = 0.00;
+        $returnItems = [];
+
+        foreach ($request->items as $reqItem) {
+            $orderItem = $order->items()->where('id', $reqItem['order_item_id'])->first();
+            if (!$orderItem) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Item does not belong to this order.'
+                ], 400);
+            }
+
+            if ($reqItem['quantity'] > $orderItem->quantity) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Cannot return more quantity than purchased for '{$orderItem->product_name}'."
+                ], 400);
+            }
+
+            $refundAmount += $orderItem->price * $reqItem['quantity'];
+            $returnItems[] = [
+                'order_item_id' => $orderItem->id,
+                'product_name' => $orderItem->product_name,
+                'product_sku' => $orderItem->product_sku,
+                'quantity' => $reqItem['quantity'],
+                'price' => $orderItem->price,
+            ];
+        }
+
+        // Create return request entry
+        $returnRequest = \App\Models\ReturnRequest::create([
+            'order_id' => $order->id,
+            'user_id' => $user->id,
+            'reason' => $request->reason,
+            'status' => 'pending',
+            'items' => $returnItems,
+            'refund_amount' => $refundAmount,
+        ]);
+
+        // Update overall order status
+        $order->update([
+            'status' => 'return_requested'
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Return request submitted successfully. A courier pickup will be scheduled upon approval.',
+            'data' => [
+                'return_request_id' => $returnRequest->id,
+                'refund_amount' => $refundAmount
+            ]
         ]);
     }
 
@@ -165,6 +320,28 @@ class OrderController extends Controller
             $data['shiprocket_shipment_id'] = $order->shiprocket_shipment_id;
             $data['awb_code'] = $order->awb_code;
             $data['shipment_data'] = json_decode($order->shipment_data, true);
+            
+            // Dynamic customer tracking URL (Shopify standard) & Expected Delivery Date
+            $trackingUrl = null;
+            $expectedDeliveryDate = null;
+            if ($order->awb_code) {
+                $shipmentData = json_decode($order->shipment_data, true) ?: [];
+                $provider = $shipmentData['provider'] ?? 'shiprocket';
+                
+                $trackingUrl = ($provider === 'parcelx') 
+                    ? "https://app.parcelx.in/track?awb={$order->awb_code}" 
+                    : "https://shiprocket.co/tracking/{$order->awb_code}";
+                
+                if ($provider === 'parcelx') {
+                    $expectedDeliveryDate = $shipmentData['latest_carrier_track']['expected_delivery_date'] 
+                        ?? $shipmentData['latest_carrier_track']['edd'] 
+                        ?? null;
+                } else {
+                    $expectedDeliveryDate = $shipmentData['latest_carrier_track']['edd'] ?? null;
+                }
+            }
+            $data['tracking_url'] = $trackingUrl;
+            $data['expected_delivery_date'] = $expectedDeliveryDate;
             
             $data['items'] = $order->items->map(function ($item) {
                 return [

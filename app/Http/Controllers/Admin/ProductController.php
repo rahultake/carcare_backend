@@ -79,6 +79,11 @@ class ProductController extends Controller
         $data = $request->all();
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         
+        // Auto calculate discount percentage if not provided
+        if (empty($data['discount_percentage']) && !empty($data['compare_price']) && !empty($data['price']) && $data['compare_price'] > $data['price']) {
+            $data['discount_percentage'] = round((($data['compare_price'] - $data['price']) / $data['compare_price']) * 100, 2);
+        }
+        
         // Process tags
         if ($request->tags) {
             $data['tags'] = array_map('trim', explode(',', $request->tags));
@@ -156,6 +161,11 @@ class ProductController extends Controller
 
         $data = $request->all();
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
+        
+        // Auto calculate discount percentage if not provided
+        if (empty($data['discount_percentage']) && !empty($data['compare_price']) && !empty($data['price']) && $data['compare_price'] > $data['price']) {
+            $data['discount_percentage'] = round((($data['compare_price'] - $data['price']) / $data['compare_price']) * 100, 2);
+        }
         
         // Process tags
         if ($request->tags) {

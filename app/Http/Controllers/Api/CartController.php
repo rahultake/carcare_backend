@@ -82,7 +82,7 @@ class CartController extends Controller
             ]);
         }
 
-        $cartItem->load('product.images');
+        $cartItem->load(['product.images', 'product.categories']);
 
         return response()->json([
             'status' => 'success',
@@ -429,6 +429,7 @@ class CartController extends Controller
                 'slug' => $cartItem->product->slug,
                 'sku' => $cartItem->product->sku,
                 'brand' => $cartItem->product->brand,
+                'hsn_code' => $cartItem->product->categories->first(fn($cat) => !empty($cat->hsn_code))?->hsn_code,
                 'price' => (float) $cartItem->product->price,
                 'cgst' => (float) ($cartItem->product->cgst ?? 0),
                 'sgst' => (float) ($cartItem->product->sgst ?? 0),

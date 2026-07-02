@@ -390,8 +390,8 @@ class PaymentController extends Controller
                         'razorpay_response' => $mockPayment,
                     ]);
 
-                // go to shiprocket block
-                goto shiprocket_block;
+                // go to shipping block
+                goto shipping_block;
             }
 
             /**
@@ -429,30 +429,49 @@ class PaymentController extends Controller
 
             /**
              * ===========================================
-             * 🔵 SHIPROCKET
+             * 🔵 SHIPPING INTEGRATION (SHIPROCKET OR PARCELX)
              * ===========================================
              */
-            shiprocket_block:
+            shipping_block:
 
             try {
+                $provider = setting('shipping_provider', 'shiprocket');
 
-                $shiprocket = new \App\Services\ShiprocketService();
-                $shipResponse = $shiprocket->createOrder($order);
+                if ($provider === 'parcelx') {
+                    $parcelx = new \App\Services\ParcelXService();
+                    $shipResponse = $parcelx->createOrder($order);
 
-                if ($shipResponse && isset($shipResponse['order_id'])) {
-                    $order->update([
-                        'shiprocket_order_id'      => $shipResponse['order_id'] ?? null,
-                        'shiprocket_shipment_id'   => $shipResponse['shipment_id'] ?? null,
-                        'awb_code'                 => $shipResponse['awb_code'] ?? null,
-                        'courier_company_id'       => $shipResponse['courier_company_id'] ?? null,
-                        'shipment_data'            => json_encode($shipResponse),
-                    ]);
+                    if ($shipResponse && isset($shipResponse['status']) && $shipResponse['status']) {
+                        $pxData = $shipResponse['data'] ?? [];
+                        $order->update([
+                            'shiprocket_order_id'      => $pxData['order_number'] ?? null,
+                            'shiprocket_shipment_id'   => $pxData['pickup_id'] ?? null,
+                            'awb_code'                 => $pxData['awb_number'] ?? null,
+                            'courier_company_id'       => $pxData['courier_code'] ?? null,
+                            'shipment_data'            => json_encode(array_merge($shipResponse, ['provider' => 'parcelx'])),
+                        ]);
+                    } else {
+                        Log::error("ParcelX DID NOT return successful status: " . json_encode($shipResponse));
+                    }
                 } else {
-                    Log::error("Shiprocket DID NOT return order_id");
+                    $shiprocket = new \App\Services\ShiprocketService();
+                    $shipResponse = $shiprocket->createOrder($order);
+
+                    if ($shipResponse && isset($shipResponse['order_id'])) {
+                        $order->update([
+                            'shiprocket_order_id'      => $shipResponse['order_id'] ?? null,
+                            'shiprocket_shipment_id'   => $shipResponse['shipment_id'] ?? null,
+                            'awb_code'                 => $shipResponse['awb_code'] ?? null,
+                            'courier_company_id'       => $shipResponse['courier_company_id'] ?? null,
+                            'shipment_data'            => json_encode(array_merge($shipResponse, ['provider' => 'shiprocket'])),
+                        ]);
+                    } else {
+                        Log::error("Shiprocket DID NOT return order_id: " . json_encode($shipResponse));
+                    }
                 }
 
             } catch (\Exception $e) {
-                Log::error("Shiprocket Error: " . $e->getMessage());
+                Log::error("Shipping Integration Error: " . $e->getMessage());
             }
 
             DB::commit();
@@ -568,6 +587,62 @@ class PaymentController extends Controller
                 'paid_at' => $order->paid_at,
             ]
         ]);
+    }
+
+    /**
+     * Initiate Razorpay Refund
+     */
+    public static function initiateRazorpayRefund($order, $amount, $reason = '')
+    {
+        if (env('RAZORPAY_TEST_MODE') == true) {
+            Log::info("Razorpay Refund Mocked for Order {$order->order_number} of amount {$amount}");
+            Payment::where('order_id', $order->id)->update(['status' => 'refunded']);
+            return [
+                'status' => 'success',
+                'refund_id' => 'rfnd_mock_' . uniqid(),
+                'amount' => $amount
+            ];
+        }
+
+        try {
+            $api = new Api(
+                config('razorpay.key_id'),
+                config('razorpay.key_secret')
+            );
+
+            $paymentId = $order->razorpay_payment_id;
+            if (!$paymentId) {
+                $paymentRecord = Payment::where('order_id', $order->id)->whereNotNull('razorpay_payment_id')->first();
+                $paymentId = $paymentRecord ? $paymentRecord->razorpay_payment_id : null;
+            }
+
+            if (!$paymentId) {
+                Log::error("Cannot refund Order {$order->order_number} - No Razorpay payment ID found");
+                return null;
+            }
+
+            $refund = $api->refund->create([
+                'payment_id' => $paymentId,
+                'amount' => (int) round($amount * 100), // in paise
+                'notes' => [
+                    'order_number' => $order->order_number,
+                    'reason' => $reason
+                ]
+            ]);
+
+            Log::info("Razorpay Refund Successful for Order {$order->order_number}: " . $refund->id);
+            Payment::where('order_id', $order->id)->update(['status' => 'refunded']);
+
+            return [
+                'status' => 'success',
+                'refund_id' => $refund->id,
+                'amount' => $amount
+            ];
+
+        } catch (\Exception $e) {
+            Log::error("Razorpay Refund Exception for Order {$order->order_number}: " . $e->getMessage());
+            return null;
+        }
     }
 
     // Private helper methods for webhook handling

@@ -20,6 +20,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Parent</th>
+                            <th>HSN Code</th>
                             <th>Products</th>
                             <th>Status</th>
                             <th>Sort Order</th>
@@ -44,6 +45,9 @@
                                 </td>
                                 <td>
                                     {{ $category->parent ? $category->parent->name : '-' }}
+                                </td>
+                                <td>
+                                    {{ $category->hsn_code ?: '-' }}
                                 </td>
                                 <td>
                                     <span class="badge bg-info">{{ $category->products->count() }}</span>
@@ -88,6 +92,7 @@
                                         </div>
                                     </td>
                                     <td>{{ $child->parent->name }}</td>
+                                    <td>{{ $child->hsn_code ?: '-' }}</td>
                                     <td><span class="badge bg-info">{{ $child->products->count() }}</span></td>
                                     <td>
                                         <span class="badge bg-{{ $child->status === 'active' ? 'success' : 'secondary' }}">

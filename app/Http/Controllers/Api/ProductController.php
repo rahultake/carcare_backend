@@ -12,11 +12,18 @@ class ProductController extends Controller
     {
         $perPage = $request->get('per_page', 15);
         $featured = $request->boolean('featured', false);
+        $hsnCode = $request->get('hsn_code');
         
         $query = Product::active()->with(['brandDetails', 'categories', 'images']);
         
         if ($featured) {
             $query->featured();
+        }
+
+        if ($hsnCode) {
+            $query->whereHas('categories', function ($q) use ($hsnCode) {
+                $q->where('categories.hsn_code', $hsnCode);
+            });
         }
         
         $products = $query->paginate($perPage);
@@ -49,6 +56,7 @@ class ProductController extends Controller
         $minPrice = $request->get('min_price');
         $maxPrice = $request->get('max_price');
         $search = $request->get('search');
+        $hsnCode = $request->get('hsn_code');
         $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
         
@@ -71,6 +79,13 @@ class ProductController extends Controller
         // Filter by brand
         if ($brand) {
             $query->where('brand', $brand);
+        }
+        
+        // Filter by HSN Code
+        if ($hsnCode) {
+            $query->whereHas('categories', function ($q) use ($hsnCode) {
+                $q->where('categories.hsn_code', $hsnCode);
+            });
         }
         
         // Filter by price range
@@ -114,6 +129,7 @@ class ProductController extends Controller
                     'category_id' => $categoryId,
                     'subcategory_id' => $subcategoryId,
                     'brand' => $brand,
+                    'hsn_code' => $hsnCode,
                     'price_range' => [
                         'min' => $minPrice,
                         'max' => $maxPrice
@@ -186,6 +202,7 @@ class ProductController extends Controller
             'id' => $product->id,
             'name' => $product->name,
             'slug' => $product->slug,
+            'hsn_code' => $product->categories->first(fn($cat) => !empty($cat->hsn_code))?->hsn_code,
             'description' => $product->description,
             'short_description' => $product->short_description,
             'additional_information' => $product->additional_information,
@@ -209,7 +226,13 @@ class ProductController extends Controller
             'is_digital' => $product->is_digital,
             'stock_status' => $product->stock_status,
             'quantity' => $product->quantity,
+            'track_inventory' => (bool) $product->track_inventory,
+            'min_quantity' => (int) $product->min_quantity,
             'weight' => $product->weight ? (float) $product->weight : null,
+            'length' => $product->length ? (float) $product->length : null,
+            'width' => $product->width ? (float) $product->width : null,
+            'height' => $product->height ? (float) $product->height : null,
+            'attributes' => $product->attributes,
             'categories' => $product->categories->map(function ($category) {
                 return [
                     'id' => $category->id,

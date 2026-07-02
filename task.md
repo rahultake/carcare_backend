@@ -1,0 +1,15 @@
+- [x] Database migration for categories hsn_code
+- [x] Add hsn_code to Category model fillable
+- [x] Update Admin CategoryController validation
+- [x] Update category admin views (create, edit, index)
+- [x] Update API CategoryController (retrieve, filter)
+- [x] Update API ProductController (retrieve, filter)
+- [x] Update API CartController and WishlistController mappings
+- [x] Verify changes and run migration
+- [x] Pricing & Discount Auto-Calculation in Admin (JS & Backend)
+- [x] Show applied coupon details in Admin order details view
+- [x] Show Cost Price, Compare Price, Main Price, and Discount in Order Details items summary
+- [x] Show HSN Code in Order Details items summary
+- [x] Make Order Details items summary table responsive and horizontally scrollable
+- [x] Dynamically calculate package dimensions and weight in ShiprocketService
+- [x] Separate shipping and billing address support in ShiprocketService

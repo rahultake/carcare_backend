@@ -13,11 +13,16 @@ class CategoryController extends Controller
     public function index(Request $request)
     {
         $parentOnly = $request->boolean('parent_only', false);
+        $hsnCode = $request->get('hsn_code');
         
         $query = Category::active()->ordered();
         
         if ($parentOnly) {
             $query->parent();
+        }
+        
+        if ($hsnCode) {
+            $query->where('hsn_code', $hsnCode);
         }
         
         $categories = $query->get()->map(function ($category) {
@@ -28,6 +33,7 @@ class CategoryController extends Controller
                 'description' => $category->description,
                 'image' => $category->image ? asset($category->image) : null,
                 'icon' => $category->icon,
+                'hsn_code' => $category->hsn_code,
                 'parent_id' => $category->parent_id,
                 'has_children' => $category->hasChildren(),
                 'children_count' => $category->children()->count(),
@@ -45,6 +51,7 @@ class CategoryController extends Controller
     public function subcategories(Request $request)
     {
         $categoryId = $request->get('category_id');
+        $hsnCode = $request->get('hsn_code');
         
         $query = Category::active()->ordered();
         
@@ -52,6 +59,10 @@ class CategoryController extends Controller
             $query->where('parent_id', $categoryId);
         } else {
             $query->whereNotNull('parent_id');
+        }
+        
+        if ($hsnCode) {
+            $query->where('hsn_code', $hsnCode);
         }
         
         $subcategories = $query->get()->map(function ($category) {
@@ -62,6 +73,7 @@ class CategoryController extends Controller
                 'description' => $category->description,
                 'image' => $category->image ? asset('storage/' . $category->image) : null,
                 'icon' => $category->icon,
+                'hsn_code' => $category->hsn_code,
                 'parent_id' => $category->parent_id,
                 'parent_name' => $category->parent->name ?? null,
             ];
@@ -119,11 +131,13 @@ class CategoryController extends Controller
                                     'name' => $category->name,
                                     'slug' => $category->slug,
                                     'icon' => $category->icon,
+                                    'hsn_code' => $category->hsn_code,
                                     'children' => $category->children->map(function ($child) {
                                         return [
                                             'id' => $child->id,
                                             'name' => $child->name,
                                             'slug' => $child->slug,
+                                            'hsn_code' => $child->hsn_code,
                                         ];
                                     }),
                                 ];

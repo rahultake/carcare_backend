@@ -317,6 +317,10 @@
                 <a href="{{ route('admin.customers.index') }}" class="menu-item">
                     <i class="fas fa-users"></i> Customers
                 </a>
+
+                <a href="{{ route('admin.shipping-settings.index') }}" class="menu-item {{ request()->routeIs('admin.shipping-settings.*') ? 'active' : '' }}">
+                    <i class="fas fa-truck"></i> Shipping Settings
+                </a>
             </div>
 
             <!-- ANALYTICS -->

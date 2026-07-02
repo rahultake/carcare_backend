@@ -1,5 +1,8 @@
 <?php
 
+// Suppress deprecation warnings on PHP 8.5+ due to third-party dependencies not yet updated
+error_reporting(error_reporting() & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

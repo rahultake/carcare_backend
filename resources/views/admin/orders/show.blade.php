@@ -271,7 +271,7 @@
 
         @php
             $shipmentData = json_decode($order->shipment_data, true) ?: [];
-            $provider = $shipmentData['provider'] ?? 'shiprocket';
+            $provider = $shipmentData['provider'] ?? ($order->awb_code ? 'shiprocket' : null);
         @endphp
 
         @if($provider === 'parcelx')

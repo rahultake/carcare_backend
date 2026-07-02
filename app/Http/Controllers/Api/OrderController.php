@@ -80,6 +80,16 @@ class OrderController extends Controller
             ], 404);
         }
 
+        // Validate if all items in this order are cancellable
+        foreach ($order->items as $item) {
+            if ($item->product && !$item->product->is_cancellable) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Order cannot be cancelled because '{$item->product_name}' is non-cancellable."
+                ], 400);
+            }
+        }
+
         if ($order->status === 'cancelled') {
             return response()->json([
                 'status' => 'error',
@@ -213,6 +223,13 @@ class OrderController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Item does not belong to this order.'
+                ], 400);
+            }
+
+            if ($orderItem->product && !$orderItem->product->is_refundable) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Cannot return '{$orderItem->product_name}' because it is non-refundable."
                 ], 400);
             }
 
@@ -366,6 +383,8 @@ class OrderController extends Controller
                         'id' => $item->product->id,
                         'name' => $item->product->name,
                         'slug' => $item->product->slug,
+                        'is_refundable' => (bool) $item->product->is_refundable,
+                        'is_cancellable' => (bool) $item->product->is_cancellable,
                         'primary_image' => $item->product->images->where('is_primary', true)->first() 
                             ? asset('storage/' . $item->product->images->where('is_primary', true)->first()->image_path)
                             : ($item->product->images->first() ? asset('storage/' . $item->product->images->first()->image_path) : null),
@@ -388,6 +407,8 @@ class OrderController extends Controller
                         'id' => $item->product->id,
                         'name' => $item->product->name,
                         'slug' => $item->product->slug,
+                        'is_refundable' => (bool) $item->product->is_refundable,
+                        'is_cancellable' => (bool) $item->product->is_cancellable,
                         'primary_image' => $item->product->images->where('is_primary', true)->first() 
                             ? asset('storage/' . $item->product->images->where('is_primary', true)->first()->image_path)
                             : ($item->product->images->first() ? asset('storage/' . $item->product->images->first()->image_path) : null),

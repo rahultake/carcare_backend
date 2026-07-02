@@ -112,6 +112,31 @@
                 @if($order->razorpay_payment_id)
                     <p><strong>Razorpay Payment ID:</strong> {{ $order->razorpay_payment_id }}</p>
                 @endif
+                @if($order->payment)
+                    <div class="mt-3 pt-3 border-top">
+                        <h6 class="text-primary mb-2"><i class="fas fa-credit-card me-1"></i> Razorpay Payment Info</h6>
+                        <p class="mb-1 small"><strong>Razorpay Order ID:</strong> <code>{{ $order->payment->razorpay_order_id ?? '-' }}</code></p>
+                        <p class="mb-1 small"><strong>Razorpay Payment ID:</strong> <code>{{ $order->payment->razorpay_payment_id ?? '-' }}</code></p>
+                        <p class="mb-1 small"><strong>Amount Paid:</strong> {{ strtoupper($order->payment->currency ?? 'INR') }} {{ number_format($order->payment->amount, 2) }}</p>
+                        <p class="mb-1 small"><strong>Transaction Status:</strong> 
+                            @if($order->payment->status === 'captured')
+                                <span class="badge bg-success">Captured</span>
+                            @elseif($order->payment->status === 'refunded')
+                                <span class="badge bg-info text-dark">Refunded</span>
+                            @elseif($order->payment->status === 'failed')
+                                <span class="badge bg-danger">Failed</span>
+                            @else
+                                <span class="badge bg-secondary">{{ ucfirst($order->payment->status) }}</span>
+                            @endif
+                        </p>
+                        @if($order->payment->method)
+                            <p class="mb-1 small"><strong>Method:</strong> <span class="badge bg-light text-dark border">{{ strtoupper($order->payment->method) }}</span></p>
+                        @endif
+                        @if($order->payment->error_description)
+                            <p class="mb-1 text-danger small"><strong>Error Detail:</strong> {{ $order->payment->error_description }}</p>
+                        @endif
+                    </div>
+                @endif
                 @if($order->coupon_code)
                     <p><strong>Coupon Applied:</strong> <span class="badge bg-success">{{ $order->coupon_code }}</span></p>
                 @endif

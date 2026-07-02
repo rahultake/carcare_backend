@@ -399,6 +399,18 @@
                                value="1" {{ old('is_digital', $product->is_digital) ? 'checked' : '' }}>
                         <label class="form-check-label">Digital Product</label>
                     </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" name="is_refundable" 
+                               value="1" {{ old('is_refundable', $product->is_refundable) ? 'checked' : '' }}>
+                        <label class="form-check-label">Refundable / Returnable</label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" name="is_cancellable" 
+                               value="1" {{ old('is_cancellable', $product->is_cancellable) ? 'checked' : '' }}>
+                        <label class="form-check-label">Cancellable by Customer</label>
+                    </div>
                 </div>
             </div>
 

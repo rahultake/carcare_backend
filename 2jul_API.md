@@ -111,3 +111,45 @@ const order = data.order;
 console.log(order.expected_delivery_date); // e.g. "2026-07-05"
 console.log(order.tracking_url);           // e.g. "https://app.parcelx.in/track?awb=..."
 ```
+
+---
+
+## 4. Product Refundable & Cancellable API Flags
+
+We have added product-level toggles to control which items can be cancelled or returned.
+
+### 🗄️ Database Changes (Run this first):
+```sql
+ALTER TABLE `products` ADD COLUMN `is_refundable` tinyint(1) NOT NULL DEFAULT '0';
+ALTER TABLE `products` ADD COLUMN `is_cancellable` tinyint(1) NOT NULL DEFAULT '0';
+```
+
+### 📦 API Parameter Exposures:
+1.  **Product List/Details APIs** (`/api/products` and `/api/products/{slug}`):
+    *   **`is_refundable`**: Boolean (`true`/`false`)
+    *   **`is_cancellable`**: Boolean (`true`/`false`)
+2.  **Order Details API** (`/api/orders/{id}`):
+    *   Exposed inside the `product` sub-object nested under each line-item:
+        ```json
+        {
+          "id": 14,
+          "product_name": "Car Polish",
+          ...
+          "product": {
+            "id": 5,
+            "name": "Car Polish",
+            "slug": "car-polish",
+            "is_refundable": true,
+            "is_cancellable": false
+          }
+        }
+        ```
+
+### 🔒 Backend Validation Rules:
+*   **Cancellation**: If a customer calls `POST /api/orders/{id}/cancel` on an order containing any item where `is_cancellable` is `false`, the request is rejected with:
+    *   **HTTP Status**: `400 Bad Request`
+    *   **Response**: `{"status": "error", "message": "Order cannot be cancelled because '[product_name]' is non-cancellable."}`
+*   **Returns**: If a customer requests a return via `POST /api/orders/{id}/return` for an item where `is_refundable` is `false`, the request is rejected with:
+    *   **HTTP Status**: `400 Bad Request`
+    *   **Response**: `{"status": "error", "message": "Cannot return '[product_name]' because it is non-refundable."}`
+

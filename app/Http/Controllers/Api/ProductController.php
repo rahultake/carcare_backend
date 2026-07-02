@@ -224,6 +224,8 @@ class ProductController extends Controller
             'merchant_state' => $product->merchant_state ?? null,
             'is_featured' => $product->is_featured,
             'is_digital' => $product->is_digital,
+            'is_refundable' => (bool) $product->is_refundable,
+            'is_cancellable' => (bool) $product->is_cancellable,
             'stock_status' => $product->stock_status,
             'quantity' => $product->quantity,
             'track_inventory' => (bool) $product->track_inventory,

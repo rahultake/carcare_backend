@@ -65,6 +65,8 @@ class ProductController extends Controller
             'status' => 'required|in:active,inactive,draft',
             'is_featured' => 'boolean',
             'is_digital' => 'boolean',
+            'is_refundable' => 'boolean',
+            'is_cancellable' => 'boolean',
             'track_inventory' => 'boolean',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
@@ -78,6 +80,8 @@ class ProductController extends Controller
 
         $data = $request->all();
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
+        $data['is_refundable'] = $request->has('is_refundable') ? 1 : 0;
+        $data['is_cancellable'] = $request->has('is_cancellable') ? 1 : 0;
         
         // Auto calculate discount percentage if not provided
         if (empty($data['discount_percentage']) && !empty($data['compare_price']) && !empty($data['price']) && $data['compare_price'] > $data['price']) {
@@ -148,6 +152,8 @@ class ProductController extends Controller
             'status' => 'required|in:active,inactive,draft',
             'is_featured' => 'boolean',
             'is_digital' => 'boolean',
+            'is_refundable' => 'boolean',
+            'is_cancellable' => 'boolean',
             'track_inventory' => 'boolean',
             'meta_title' => 'nullable|string|max:255',
             'meta_description' => 'nullable|string|max:500',
@@ -161,6 +167,8 @@ class ProductController extends Controller
 
         $data = $request->all();
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
+        $data['is_refundable'] = $request->has('is_refundable') ? 1 : 0;
+        $data['is_cancellable'] = $request->has('is_cancellable') ? 1 : 0;
         
         // Auto calculate discount percentage if not provided
         if (empty($data['discount_percentage']) && !empty($data['compare_price']) && !empty($data['price']) && $data['compare_price'] > $data['price']) {
